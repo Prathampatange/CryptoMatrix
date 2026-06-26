@@ -34,7 +34,7 @@ app.use('/api', apiRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 
 // Catch-all — serve frontend
-app.get('/{*path}', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
