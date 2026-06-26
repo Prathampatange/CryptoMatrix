@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CryptoMatrix — Live Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Animated background -->
+    <canvas id="bg-canvas"></canvas>
+    <div class="bg-grid"></div>
+
+    <!-- Ticker tape -->
+    <div class="ticker-wrap">
+        <div class="ticker" id="ticker">
+            <span class="ticker-item">BTC <span id="t-btc">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">ETH <span id="t-eth">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">SOL <span id="t-sol">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">BNB <span id="t-bnb">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">BTC <span id="t-btc2">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">ETH <span id="t-eth2">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">SOL <span id="t-sol2">—</span></span>
+            <span class="ticker-sep">◆</span>
+            <span class="ticker-item">BNB <span id="t-bnb2">—</span></span>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-brand">
+            <div class="logo-mark">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" fill="none" stroke="#00f5c4"
+                        stroke-width="1.5" />
+                    <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="rgba(0,245,196,0.15)" stroke="#00f5c4"
+                        stroke-width="1" />
+                    <circle cx="16" cy="16" r="3" fill="#00f5c4" />
+                </svg>
+            </div>
+            <div>
+                <div class="brand-name">CryptoMatrix</div>
+                <div class="brand-sub">Real-Time Analytics Engine</div>
+            </div>
+        </div>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="dashboard">
+                <span class="tab-icon">◈</span> Dashboard
+            </button>
+            <button class="tab-btn" data-tab="markets">
+                <span class="tab-icon">📈</span> Markets
+            </button>
+            <button class="tab-btn" data-tab="prediction">
+                <span class="tab-icon">⬡</span> Prediction
+            </button>
+            <button class="tab-btn" data-tab="sentiment">
+                <span class="tab-icon">◎</span> Sentiment
+            </button>
+            <button class="tab-btn" data-tab="portfolio">
+                <span class="tab-icon">◇</span> Portfolio
+            </button>
+        </nav>
+
+        <div class="header-meta">
+            <div class="currency-toggle">
+                <span class="currency-toggle-label">PRICE IN</span>
+                <button class="currency-btn" data-currency="USD">$ USD</button>
+                <button class="currency-btn" data-currency="INR">₹ INR</button>
+                <button class="currency-btn active" data-currency="BOTH">BOTH</button>
+            </div>
+            <div class="exchange-rate"
+                style="margin-right: 16px; font-family: var(--font-mono); font-size: 13px; color: var(--text3);">
+                <span id="exchange-rate-display">Fetching rate...</span>
+            </div>
+            <div class="status-dot-wrap">
+                <span id="status-dot" class="status-dot offline"></span>
+                <span id="connection-badge">CONNECTING</span>
+            </div>
+            <span id="last-update" class="last-update">--:--:--</span>
+        </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div id="alert-container" class="alert-container"></div>
+
+    <!-- ══ TAB: Dashboard ══════════════════════════════════ -->
+    <div id="tab-dashboard" class="tab-content active">
+
+        <!-- Price cards -->
+        <section class="cards-grid" id="cards-grid"></section>
+
+        <!-- Chart section -->
+        <section class="charts-section">
+            <div class="chart-header-row">
+                <div class="chart-selector">
+                    <label class="selector-label">ASSET</label>
+                    <div class="custom-select-wrap">
+                        <select id="coin-select" class="custom-select">
+                            <option value="BTC">Bitcoin · BTC</option>
+                            <option value="ETH">Ethereum · ETH</option>
+                            <option value="SOL">Solana · SOL</option>
+                            <option value="BNB">Binance Coin · BNB</option>
+                            <option value="SENSEX">BSE Sensex</option>
+                            <option value="NIFTY">Nifty 50</option>
+                            <option value="GOLD">Gold</option>
+                            <option value="SILVER">Silver</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="chart-title" class="chart-main-title">BTC — Price & Moving Averages</div>
+                <div class="chart-live-badge">
+                    <span class="pulse-dot"></span> LIVE
+                </div>
+            </div>
+
+            <div class="chart-card main-chart-card" style="position:relative;height:480px;">
+                <canvas id="priceChart"></canvas>
+            </div>
+
+            <!-- Stats row -->
+            <div class="stats-row">
+                <div class="stat-card" id="stat-sma10">
+                    <div class="stat-label">SMA 10</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Simple MA</div>
+                </div>
+                <div class="stat-card" id="stat-sma20">
+                    <div class="stat-label">SMA 20</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Simple MA</div>
+                </div>
+                <div class="stat-card" id="stat-ema10">
+                    <div class="stat-label">EMA 10</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Exp MA</div>
+                </div>
+                <div class="stat-card" id="stat-ema20">
+                    <div class="stat-label">EMA 20</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Exp MA</div>
+                </div>
+                <div class="stat-card" id="stat-vol">
+                    <div class="stat-label">Volatility</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Std Dev %</div>
+                </div>
+                <div class="stat-card" id="stat-chg">
+                    <div class="stat-label">Change</div>
+                    <div class="stat-value">—</div>
+                    <div class="stat-sub">Window %</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ══ TAB: Markets ══════════════════════════════════ -->
+    <div id="tab-markets" class="tab-content">
+        <section class="section-padded">
+            <div class="page-title-row">
+                <div>
+                    <h2 class="page-title">Global Markets</h2>
+                    <p class="page-sub">Live Sensex, Nifty, Gold, and Silver pricing</p>
+                </div>
+            </div>
+
+            <div id="market-cards-grid" class="cards-grid">
+                <div class="empty-state">Loading markets...</div>
+            </div>
+
+            <section class="charts-section" style="margin-top: 24px;">
+                <div class="chart-header-row">
+                    <div class="chart-selector">
+                        <label class="selector-label">MARKET ASSET</label>
+                        <div class="custom-select-wrap">
+                            <select id="market-chart-select" class="custom-select">
+                                <option value="SENSEX">BSE Sensex</option>
+                                <option value="NIFTY">Nifty 50</option>
+                                <option value="GOLD">Gold</option>
+                                <option value="SILVER">Silver</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card main-chart-card">
+                    <canvas id="marketChart" height="110"></canvas>
+                </div>
+
+                <!-- Stats row expected by market.js -->
+                <div class="stats-row" style="margin-top: 16px;">
+                    <div class="stat-card" id="mstat-price">
+                        <div class="stat-label">Live Price</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-change">
+                        <div class="stat-label">Day Change</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-high">
+                        <div class="stat-label">Day High</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-low">
+                        <div class="stat-label">Day Low</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-prev">
+                        <div class="stat-label">Prev Close</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-state">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                    <div class="stat-card" id="mstat-rate">
+                        <div class="stat-label">USD/INR</div>
+                        <div class="stat-value">—</div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- ══ TAB: Prediction ════════════════════════════════ -->
+    <div id="tab-prediction" class="tab-content">
+        <section class="section-padded">
+            <div class="page-title-row">
+                <div>
+                    <h2 class="page-title">AI Price Prediction</h2>
+                    <p class="page-sub">5-model ensemble forecast with MACD, Bollinger Bands & RSI</p>
+                </div>
+                <div class="predict-controls">
+                    <select id="predict-coin-select" class="custom-select">
+                        <optgroup label="Crypto">
+                            <option value="BTC">Bitcoin · BTC</option>
+                            <option value="ETH">Ethereum · ETH</option>
+                            <option value="SOL">Solana · SOL</option>
+                            <option value="BNB">Binance Coin · BNB</option>
+                        </optgroup>
+                        <optgroup label="Indian Markets">
+                            <option value="SENSEX">BSE Sensex 🇮🇳</option>
+                            <option value="NIFTY">Nifty 50 🇮🇳</option>
+                        </optgroup>
+                        <optgroup label="Commodities">
+                            <option value="GOLD">Gold 🥇</option>
+                            <option value="SILVER">Silver 🥈</option>
+                        </optgroup>
+                    </select>
+                    <button class="btn-glow" id="run-predict-btn">
+                        <span>▶ Run Prediction</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data readiness banner — shown when DB hasn't accumulated enough ticks -->
+            <div id="pred-readiness-banner"
+                style="display:none; align-items:center; gap:12px; background:rgba(0,245,196,0.06); border:1px solid rgba(0,245,196,0.18); border-radius:10px; padding:12px 18px; margin-bottom:16px; font-size:13px; color:var(--text2); font-family:var(--font-mono); line-height:1.6;">
+            </div>
+
+            <div class="signal-cards" id="signal-cards">
+                <div class="signal-card" id="sig-trend">
+                    <div class="sig-icon">↗</div>
+                    <div class="sig-label">Trend</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-signal">
+                    <div class="sig-icon">⚡</div>
+                    <div class="sig-label">Signal</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-rsi">
+                    <div class="sig-icon">◎</div>
+                    <div class="sig-label">RSI (14)</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-rsi-signal">
+                    <div class="sig-icon">◈</div>
+                    <div class="sig-label">RSI Signal</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-confidence">
+                    <div class="sig-icon">✦</div>
+                    <div class="sig-label">Confidence</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-macd">
+                    <div class="sig-icon">〜</div>
+                    <div class="sig-label">MACD</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-bollinger">
+                    <div class="sig-icon">◑</div>
+                    <div class="sig-label">Bollinger</div>
+                    <div class="sig-value">—</div>
+                </div>
+                <div class="signal-card" id="sig-overall">
+                    <div class="sig-icon">⚡</div>
+                    <div class="sig-label">Overall Signal</div>
+                    <div class="sig-value">—</div>
+                </div>
+            </div>
+            <!-- Ensemble Model Breakdown -->
+            <div class="chart-card" style="margin-top:16px">
+                <div class="chart-card-header">
+                    <span>Ensemble Model Breakdown</span>
+                    <span class="chart-card-badge">5 MODELS</span>
+                </div>
+                <div id="model-breakdown" class="model-breakdown">
+                    <div class="empty-state">Run a prediction to see model breakdown</div>
+                </div>
+            </div>
+
+            <div class="chart-card" style="margin-top:16px">
+                <div class="chart-card-header">
+                    <span>Ensemble Forecast — Next 10 Steps</span>
+                    <span class="chart-card-badge">5-MODEL ENSEMBLE</span>
+                </div>
+                <canvas id="forecastChart" height="120"></canvas>
+            </div>
+
+            <div class="chart-card" style="margin-top:16px">
+                <div class="chart-card-header">
+                    <span>Anomaly Detection</span>
+                    <span class="chart-card-badge">Z-SCORE + IQR</span>
+                </div>
+                <div id="anomaly-content" class="anomaly-content">
+                    <div class="empty-state">Run a prediction to see anomaly analysis</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ══ TAB: Sentiment ════════════════════════════════ -->
+    <div id="tab-sentiment" class="tab-content">
+        <section class="section-padded">
+            <div class="page-title-row">
+                <div>
+                    <h2 class="page-title">Market Sentiment</h2>
+                    <p class="page-sub" id="sentiment-updated">Analysing news headlines…</p>
+                </div>
+            </div>
+            <div class="sentiment-grid" id="sentiment-grid">
+                <div class="empty-state">Loading sentiment data…</div>
+            </div>
+            <div class="chart-card" style="margin-top:20px">
+                <div class="chart-card-header">
+                    <span>Sentiment Overview</span>
+                    <span class="chart-card-badge">NEWS NLP</span>
+                </div>
+                <canvas id="sentimentChart" height="90"></canvas>
+            </div>
+            <div id="headlines-container" style="margin-top:16px"></div>
+        </section>
+    </div>
+
+    <!-- ══ TAB: Portfolio ════════════════════════════════ -->
+    <div id="tab-portfolio" class="tab-content">
+        <section class="section-padded">
+            <div class="page-title-row">
+                <div>
+                    <h2 class="page-title">Portfolio Tracker</h2>
+                    <p class="page-sub">Live P&L — updates every price tick</p>
+                </div>
+            </div>
+
+            <div class="portfolio-summary" id="portfolio-summary">
+                <div class="pf-stat featured">
+                    <div class="pf-label">Total Value</div>
+                    <div class="pf-value" id="pf-total-value">$0.00</div>
+                </div>
+                <div class="pf-stat">
+                    <div class="pf-label">Total Cost</div>
+                    <div class="pf-value" id="pf-total-cost">$0.00</div>
+                </div>
+                <div class="pf-stat">
+                    <div class="pf-label">Total P&L</div>
+                    <div class="pf-value" id="pf-total-pnl">$0.00</div>
+                </div>
+                <div class="pf-stat">
+                    <div class="pf-label">Return</div>
+                    <div class="pf-value" id="pf-total-pct">0.00%</div>
+                </div>
+            </div>
+
+            <div class="chart-card" style="margin-bottom:16px">
+                <div class="chart-card-header">
+                    <span>Add Holding</span>
+                    <span class="chart-card-badge">MANAGE</span>
+                </div>
+                <div class="add-holding-form">
+                    <select id="pf-symbol" class="custom-select">
+                        <option value="BTC">Bitcoin (BTC)</option>
+                        <option value="ETH">Ethereum (ETH)</option>
+                        <option value="SOL">Solana (SOL)</option>
+                        <option value="BNB">Binance Coin (BNB)</option>
+                        <option value="SENSEX">BSE Sensex</option>
+                        <option value="NIFTY">Nifty 50</option>
+                        <option value="GOLD">Gold</option>
+                        <option value="SILVER">Silver</option>
+                    </select>
+                    <div class="pf-qty-wrap">
+                        <input type="number" id="pf-qty" placeholder="Quantity" step="any" min="0" class="form-input" />
+                        <span class="pf-unit-badge" id="pf-unit-badge">coins</span>
+                    </div>
+                    <div class="pf-price-wrap">
+                        <input type="number" id="pf-buy-price" placeholder="Avg buy price" step="any" min="0"
+                            class="form-input" />
+                        <div class="pf-price-currency-toggle">
+                            <button class="pf-cur-btn active" data-price-currency="USD">USD</button>
+                            <button class="pf-cur-btn" data-price-currency="INR">INR</button>
+                        </div>
+                    </div>
+                    <button class="btn-glow" id="pf-add-btn"><span>+ Add</span></button>
+                </div>
+            </div>
+
+            <div class="two-col-grid">
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span>Holdings</span>
+                        <span class="chart-card-badge">POSITIONS</span>
+                    </div>
+                    <div id="holdings-table-wrapper">
+                        <div class="empty-state">No holdings yet.</div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span>Allocation</span>
+                        <span class="chart-card-badge">%</span>
+                    </div>
+                    <canvas id="allocationChart" height="220"></canvas>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/currency.js?v=6"></script>
+    <script src="js/charts.js?v=6"></script>
+    <script src="js/analytics.js?v=6"></script>
+    <script src="js/portfolio.js?v=6"></script>
+    <script src="js/prediction.js?v=6"></script>
+    <script src="js/sentimentUI.js?v=6"></script>
+
+    <script src="js/markets.js?v=6"></script>
+    <script src="js/app.js?v=6"></script>
+    <script src="js/background.js?v=6"></script>
+</body>
+
+</html>

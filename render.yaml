@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: cryptomatrix
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false          # You must set this manually in Render dashboard
+      - key: COINGECKO_BASE_URL
+        value: https://api.coingecko.com/api/v3
+      - key: FETCH_INTERVAL_MS
+        value: 20000
+      - key: ALERT_THRESHOLD_PERCENT
+        value: 5
