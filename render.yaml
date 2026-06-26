@@ -14,5 +14,5 @@ services:
         value: https://api.coingecko.com/api/v3
       - key: FETCH_INTERVAL_MS
         value: 20000
-      - key: ALERT_THRESHOLD_PERCENT
+      - key: THRESHOLD
         value: 5
